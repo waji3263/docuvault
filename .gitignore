@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Environment secrets — NEVER commit these
+.env
+.env.local
+.env.production
+
+# Client data — NEVER commit real user data
+data/users.json
+data/admins.json
+data/audit_log.json
+
+# Uploaded documents — never commit client files
+uploads/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
