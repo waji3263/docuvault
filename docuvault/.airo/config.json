@@ -1,4 +1,0 @@
-{
-  "run": "NODE_ENV=production npm start",
-  "build": "npm install"
-}
