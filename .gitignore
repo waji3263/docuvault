@@ -1,17 +1,18 @@
-# Dependencies
+# Dependencies - installed automatically by GoDaddy
 node_modules/
+package-lock.json
 
-# Environment secrets — NEVER commit these
+# Environment secrets
 .env
 .env.local
 .env.production
 
-# Client data — NEVER commit real user data
+# Client data
 data/users.json
 data/admins.json
 data/audit_log.json
 
-# Uploaded documents — never commit client files
+# Uploaded documents
 uploads/
 
 # Logs
@@ -21,7 +22,3 @@ npm-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
-
-# Temporary files
-*.tmp
-*.temp
