@@ -1,0 +1,149 @@
+SECURE DOCUMENT SUBMISSION AGREEMENT
+
+Fast Professional Services Inc.
+Effective Date: Upon Electronic Acceptance
+
+─────────────────────────────────────────────────────────────
+
+PARTIES
+
+This Secure Document Submission Agreement ("Agreement") is entered into between:
+
+  Fast Professional Services Inc., a corporation duly organized and existing under applicable law ("Company"), and
+
+  The individual identified in the invitation ("Client").
+
+─────────────────────────────────────────────────────────────
+
+1. PURPOSE OF THIS AGREEMENT
+
+Fast Professional Services Inc. provides professional services to its clients that require the secure collection, storage, and review of sensitive personal and financial documents. This Agreement governs the Client's use of the Company's secure document portal, DocuVault, and sets out the rights and obligations of both parties with respect to the documents submitted.
+
+─────────────────────────────────────────────────────────────
+
+2. DOCUMENTS REQUESTED
+
+The Company may request the Client to upload various documents through this portal, which may include but are not limited to:
+
+  • Government-issued identification (passport, driver's license, state ID)
+  • Social Security card or Individual Taxpayer Identification Number (ITIN) documentation
+  • Tax returns and W-2 or 1099 forms
+  • Bank statements and financial records
+  • Pay stubs and proof of income
+  • Utility bills or proof of address
+  • Any other documents specifically requested by the Company for the purpose of rendering professional services
+
+The Client agrees to upload only documents that are accurate, complete, authentic, and specifically requested by the Company.
+
+─────────────────────────────────────────────────────────────
+
+3. CONSENT TO COLLECTION AND USE OF DOCUMENTS
+
+By accepting this Agreement, the Client expressly consents to:
+
+  a) The collection of the documents submitted through the portal by Fast Professional Services Inc.
+
+  b) The use of those documents solely for the purpose of providing the professional services agreed upon between the parties.
+
+  c) The storage of those documents on encrypted servers maintained by or on behalf of the Company for the duration of the professional engagement and as required by applicable record retention laws.
+
+The Company will not use the Client's documents for any purpose other than the delivery of contracted services without obtaining prior written consent from the Client.
+
+─────────────────────────────────────────────────────────────
+
+4. DATA SECURITY AND ENCRYPTION
+
+Fast Professional Services Inc. takes the security of Client documents seriously. The Company employs the following security measures:
+
+  • AES-256 bit encryption for all documents stored on the platform
+  • Two-factor authentication (2FA) required for all Client accounts
+  • Secure HTTPS connections for all data transmission
+  • Access restricted to authorized personnel only
+  • Individual private folders assigned to each Client
+
+Notwithstanding the above, the Client acknowledges that no electronic transmission or storage system is completely secure, and the Company cannot guarantee absolute security. The Company will promptly notify the Client in the event of a data breach affecting the Client's documents.
+
+─────────────────────────────────────────────────────────────
+
+5. CONFIDENTIALITY
+
+Both parties agree to maintain strict confidentiality with respect to all documents, information, and data shared through this portal.
+
+  a) The Company agrees not to disclose, share, sell, or transfer the Client's documents to any third party except:
+       (i)  As required by law, regulation, court order, or government authority;
+       (ii) With the Client's prior written consent;
+       (iii) To authorized service providers who assist in delivering the Company's services, subject to equivalent confidentiality obligations.
+
+  b) The Client agrees to maintain the confidentiality of their login credentials and not to share access to their DocuVault account with any unauthorized person.
+
+─────────────────────────────────────────────────────────────
+
+6. CLIENT RESPONSIBILITIES
+
+The Client agrees to:
+
+  a) Provide accurate, complete, and authentic documents as requested.
+
+  b) Notify Fast Professional Services Inc. immediately if the Client discovers or suspects any unauthorized access to their portal account.
+
+  c) Keep their login credentials, password, and two-factor authentication device secure at all times.
+
+  d) Promptly notify the Company of any change in circumstances that may affect the accuracy of previously submitted documents.
+
+  e) Use the portal only for the lawful purpose of submitting documents to the Company in connection with contracted services.
+
+The Client agrees NOT to upload documents that are fraudulent, forged, altered, or that belong to another individual without lawful authorization.
+
+─────────────────────────────────────────────────────────────
+
+7. DOCUMENT RETENTION AND DELETION
+
+The Company will retain Client documents for the period required to fulfill the contracted services and as required by applicable federal and state record retention laws. Upon conclusion of the professional engagement, the Client may request deletion of their documents by contacting the Company in writing. The Company reserves the right to retain documents as required by law even after the conclusion of services.
+
+─────────────────────────────────────────────────────────────
+
+8. LIMITATION OF LIABILITY
+
+To the maximum extent permitted by applicable law, Fast Professional Services Inc. shall not be liable for:
+
+  a) Any indirect, incidental, special, consequential, or punitive damages arising out of or related to the Client's use of the portal.
+
+  b) Any loss of data resulting from circumstances beyond the Company's reasonable control, including but not limited to cyberattacks, force majeure events, or third-party service failures.
+
+The Company's total liability to the Client for any claim arising under this Agreement shall not exceed the total fees paid by the Client to the Company in the three (3) months preceding the event giving rise to the claim.
+
+─────────────────────────────────────────────────────────────
+
+9. GOVERNING LAW AND DISPUTE RESOLUTION
+
+This Agreement shall be governed by and construed in accordance with the laws of the State in which Fast Professional Services Inc. is incorporated, without regard to its conflict of law provisions. Any dispute arising out of or relating to this Agreement shall first be attempted to be resolved through good faith negotiation between the parties.
+
+─────────────────────────────────────────────────────────────
+
+10. AMENDMENTS
+
+Fast Professional Services Inc. reserves the right to amend this Agreement at any time. Clients will be notified of material changes and may be required to re-accept the updated Agreement before continuing to use the portal.
+
+─────────────────────────────────────────────────────────────
+
+11. ENTIRE AGREEMENT
+
+This Agreement constitutes the entire agreement between the parties with respect to the subject matter herein and supersedes all prior discussions, representations, and agreements relating to the secure document portal.
+
+─────────────────────────────────────────────────────────────
+
+12. ELECTRONIC ACCEPTANCE
+
+By clicking "Accept Agreement" below, the Client acknowledges that:
+
+  ✓  They have read this Agreement in its entirety.
+  ✓  They understand and agree to all terms and conditions set forth herein.
+  ✓  Their electronic acceptance is legally binding and equivalent to a written signature.
+  ✓  They are at least 18 years of age and have the legal capacity to enter into this Agreement.
+  ✓  They consent to Fast Professional Services Inc. collecting, storing, and using their submitted documents as described in this Agreement.
+
+─────────────────────────────────────────────────────────────
+
+Fast Professional Services Inc.
+© 2025 All Rights Reserved.
+For questions, contact: admin@fastpro.tax
