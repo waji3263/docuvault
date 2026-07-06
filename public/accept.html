@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Client Agreement — Fast Professional Services Inc.</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--blue:#1a56db;--blue-dark:#1342b0;--blue-light:#eff4ff;--blue-mid:#dbeafe;--g50:#f8fafc;--g100:#f1f5f9;--g200:#e2e8f0;--g400:#94a3b8;--g600:#475569;--g800:#1e293b;--g900:#0f172a;--white:#ffffff;--green:#059669;--gl:#ecfdf5;--red:#dc2626;--rl:#fef2f2;}
+body{font-family:'Inter',sans-serif;background:var(--g50);color:var(--g800);min-height:100vh;}
+
+header{background:var(--white);border-bottom:1px solid var(--g200);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;}
+header img{height:34px;}
+.secure-tag{font-size:12px;color:var(--g400);display:flex;align-items:center;gap:6px;}
+
+.wrap{max-width:700px;margin:0 auto;padding:32px 20px 48px;}
+
+.pg-title{font-size:13px;font-weight:600;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.pg-sub{font-size:22px;font-weight:700;color:var(--g900);margin-bottom:24px;}
+
+/* Steps */
+.steps{display:flex;align-items:center;margin-bottom:28px;}
+.step{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:500;color:var(--g400);}
+.step.on{color:var(--blue);}
+.step.done{color:var(--green);}
+.snum{width:26px;height:26px;border-radius:50%;border:2px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.sline{flex:1;height:2px;background:var(--g200);margin:0 8px;}
+.sline.done{background:var(--green);}
+
+/* Card */
+.card{background:var(--white);border:1px solid var(--g200);border-radius:12px;overflow:hidden;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+
+/* Agreement */
+.agr-top{padding:22px 26px;border-bottom:1px solid var(--g200);}
+.agr-badge{display:inline-flex;align-items:center;gap:6px;background:var(--blue-light);color:var(--blue);font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;border:1px solid var(--blue-mid);margin-bottom:12px;}
+.agr-title{font-size:19px;font-weight:700;color:var(--g900);margin-bottom:3px;}
+.agr-sub{font-size:13px;color:var(--g400);}
+.agr-body{padding:22px 26px;max-height:420px;overflow-y:auto;background:var(--g50);border-bottom:1px solid var(--g200);}
+.agr-body pre{white-space:pre-wrap;font-family:'Inter',sans-serif;font-size:13px;line-height:1.75;color:var(--g800);}
+.agr-bottom{padding:20px 26px;}
+.check-row{display:flex;align-items:flex-start;gap:12px;margin-bottom:18px;cursor:pointer;padding:14px;background:var(--g50);border-radius:8px;border:1px solid var(--g200);}
+.check-row:hover{border-color:var(--blue);background:var(--blue-light);}
+.check-row input{width:18px;height:18px;flex-shrink:0;margin-top:1px;accent-color:var(--blue);}
+.check-text{font-size:13px;color:var(--g600);line-height:1.55;}
+.check-text strong{color:var(--g900);}
+
+/* Password */
+.form-body{padding:24px 26px;}
+.fg{margin-bottom:16px;}
+label{display:block;font-size:11px;font-weight:700;color:var(--g600);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;}
+input[type=password],input[type=number]{width:100%;padding:11px 14px;border:1.5px solid var(--g200);border-radius:8px;font-size:14px;font-family:inherit;outline:none;transition:all .15s;}
+input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,219,.09);}
+.code-inp{text-align:center;letter-spacing:8px;font-size:22px;font-weight:700;}
+.rules{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:16px;}
+.rule{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--g400);transition:color .2s;}
+.rule.ok{color:var(--green);}
+.rule-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
+.str-bar{height:5px;background:var(--g200);border-radius:999px;margin-bottom:16px;overflow:hidden;}
+.str-fill{height:100%;border-radius:999px;transition:width .3s,background .3s;width:0;}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .17s;font-family:inherit;width:100%;justify-content:center;}
+.btn-blue{background:var(--blue);color:#fff;} .btn-blue:hover{background:var(--blue-dark);}
+.btn-blue:disabled{opacity:.45;cursor:not-allowed;}
+
+/* Alert */
+.alert{padding:10px 13px;border-radius:8px;font-size:13px;display:none;margin-bottom:12px;}
+.alert.err{background:var(--rl);color:var(--red);border:1px solid #fecaca;display:block;}
+.alert.ok{background:var(--gl);color:var(--green);border:1px solid #a7f3d0;display:block;}
+.alert.info{background:var(--blue-light);color:var(--blue);border:1px solid var(--blue-mid);display:block;}
+
+/* QR */
+.qr-center{text-align:center;padding:6px 0 18px;}
+.qr-center img{width:175px;height:175px;border:2px solid var(--g200);border-radius:10px;margin:12px auto;display:block;}
+.ol{counter-reset:s;list-style:none;text-align:left;margin:12px 0 18px;}
+.ol li{font-size:13px;color:var(--g600);padding:4px 0 4px 22px;position:relative;}
+.ol li::before{content:counter(s);counter-increment:s;position:absolute;left:0;font-weight:700;color:var(--blue);}
+
+/* Success */
+.success{text-align:center;padding:48px 28px;}
+.s-icon{font-size:60px;margin-bottom:18px;}
+.s-title{font-size:24px;font-weight:700;color:var(--g900);margin-bottom:8px;}
+.s-sub{font-size:14px;color:var(--g600);margin-bottom:28px;line-height:1.6;}
+.s-box{background:var(--g50);border:1px solid var(--g200);border-radius:10px;padding:16px 20px;margin-bottom:24px;text-align:left;}
+.s-box-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--g600);padding:5px 0;}
+.s-box-row strong{color:var(--g900);}
+a.btn-blue{text-decoration:none;display:inline-flex;width:auto;}
+
+/* Error */
+.err-state{text-align:center;padding:48px 28px;}
+.err-ico{font-size:54px;margin-bottom:16px;}
+
+.hidden{display:none!important;}
+footer{text-align:center;padding:20px;font-size:11px;color:var(--g400);}
+</style>
+</head>
+<body>
+
+<header>
+  <img src="/logo.png" alt="Fast Professional Services Inc."/>
+  <div class="secure-tag">🔒 Secured by DocuVault</div>
+</header>
+
+<div class="wrap">
+  <div class="pg-title">Fast Professional Services Inc.</div>
+  <div class="pg-sub">Secure Client Portal — Account Setup</div>
+
+  <!-- Steps -->
+  <div class="steps" id="stepsBar">
+    <div class="step on" id="st1"><div class="snum">1</div>Agreement</div>
+    <div class="sline" id="sl1"></div>
+    <div class="step" id="st2"><div class="snum">2</div>Password</div>
+    <div class="sline" id="sl2"></div>
+    <div class="step" id="st3"><div class="snum">3</div>2FA Setup</div>
+    <div class="sline" id="sl3"></div>
+    <div class="step" id="st4"><div class="snum">4</div>Complete</div>
+  </div>
+
+  <!-- Error -->
+  <div class="card hidden" id="errCard">
+    <div class="err-state">
+      <div class="err-ico">⚠️</div>
+      <div style="font-size:19px;font-weight:700;color:var(--red);margin-bottom:8px;" id="errTitle">Link Invalid</div>
+      <div style="font-size:13px;color:var(--g400);line-height:1.6;" id="errMsg">This link is invalid or has expired.</div>
+      <p style="margin-top:18px;font-size:13px;color:var(--g400);">Please contact <strong>Fast Professional Services Inc.</strong> for assistance.</p>
+    </div>
+  </div>
+
+  <!-- Step 1: Agreement -->
+  <div id="step1">
+    <div class="card">
+      <div class="agr-top">
+        <div class="agr-badge">📋 Client Agreement</div>
+        <div class="agr-title" id="greetName">Secure Document Submission Agreement</div>
+        <div class="agr-sub">Please read the full agreement carefully before accepting.</div>
+      </div>
+      <div class="agr-body"><pre id="agrText">Loading…</pre></div>
+      <div class="agr-bottom">
+        <label class="check-row">
+          <input type="checkbox" id="agrCheck" onchange="toggleAccept()"/>
+          <span class="check-text">I, <strong id="clientName">the Client</strong>, confirm that I have read, understood, and agree to all terms in this Client Agreement. I understand this constitutes a legally binding electronic signature.</span>
+        </label>
+        <div class="alert" id="agrAlert"></div>
+        <button class="btn btn-blue" id="acceptBtn" disabled onclick="goStep2()">Accept Agreement &amp; Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Password -->
+  <div id="step2" class="hidden">
+    <div class="card">
+      <div style="padding:20px 26px;border-bottom:1px solid var(--g200);">
+        <div style="font-size:17px;font-weight:700;color:var(--g900);margin-bottom:3px;">Create Your Password</div>
+        <div style="font-size:13px;color:var(--g400);">Choose a strong, unique password for your portal account.</div>
+      </div>
+      <div class="form-body">
+        <div class="alert" id="pwAlert"></div>
+        <div class="fg"><label>New Password</label><input type="password" id="pw1" placeholder="Create a strong password" oninput="checkPw()"/></div>
+        <div class="str-bar"><div class="str-fill" id="strFill"></div></div>
+        <div class="rules">
+          <div class="rule" id="r-len"><div class="rule-dot"></div>At least 8 characters</div>
+          <div class="rule" id="r-num"><div class="rule-dot"></div>Contains a number</div>
+          <div class="rule" id="r-spc"><div class="rule-dot"></div>Special character (!@#$…)</div>
+          <div class="rule" id="r-upp"><div class="rule-dot"></div>Capital letter</div>
+        </div>
+        <div class="fg"><label>Confirm Password</label><input type="password" id="pw2" placeholder="Repeat your password" oninput="checkPw()"/></div>
+        <button class="btn btn-blue" id="pwBtn" disabled onclick="submitPassword()">Set Password &amp; Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: 2FA -->
+  <div id="step3" class="hidden">
+    <div class="card">
+      <div style="padding:20px 26px;border-bottom:1px solid var(--g200);">
+        <div style="font-size:17px;font-weight:700;color:var(--g900);margin-bottom:3px;">Two-Factor Authentication</div>
+        <div style="font-size:13px;color:var(--g400);">Required for all accounts. Adds a vital second layer of security.</div>
+      </div>
+      <div class="form-body">
+        <div class="qr-center">
+          <p style="font-size:13px;color:var(--g600);">Scan this QR code with <strong>Google Authenticator</strong> or <strong>Authy</strong>:</p>
+          <img id="qrImg" src="" alt="QR Code"/>
+          <ol class="ol">
+            <li>Download <strong>Google Authenticator</strong> from the App Store or Google Play</li>
+            <li>Open the app and tap the <strong>+</strong> button</li>
+            <li>Choose <strong>Scan QR code</strong> and point your camera at the code above</li>
+            <li>A 6-digit code will appear — enter it below</li>
+          </ol>
+        </div>
+        <div class="alert" id="tfaAlert"></div>
+        <div class="fg"><label>6-Digit Code from Authenticator App</label><input type="number" id="tfaCode" class="code-inp" placeholder="000000" maxlength="6" onkeydown="if(event.key==='Enter')verify2FA()"/></div>
+        <button class="btn btn-blue" onclick="verify2FA()">Verify &amp; Activate My Account →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4: Done -->
+  <div id="step4" class="hidden">
+    <div class="card">
+      <div class="success">
+        <div class="s-icon">✅</div>
+        <div class="s-title">Account Successfully Activated</div>
+        <div class="s-sub">Your Fast Professional Services Inc. client portal is ready. You can now sign in and upload your documents securely.</div>
+        <div class="s-box">
+          <div class="s-box-row">🔒 <span>Your account is protected with <strong>Two-Factor Authentication</strong></span></div>
+          <div class="s-box-row">🛡️ <span>All documents are encrypted with <strong>AES-256</strong></span></div>
+          <div class="s-box-row">📁 <span>A <strong>private folder</strong> has been created exclusively for you</span></div>
+          <div class="s-box-row">✍️ <span>Your <strong>client agreement</strong> has been recorded and time-stamped</span></div>
+        </div>
+        <a href="/" class="btn btn-blue" style="display:inline-flex;width:auto;text-decoration:none;">Go to Client Portal →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>© 2025 Fast Professional Services Inc. All rights reserved. &nbsp;|&nbsp; 🔒 DocuVault Secure Portal</footer>
+
+<script>
+const params=new URLSearchParams(location.search);
+const token=params.get('token');
+let pendingUserId=null;
+
+window.onload=async()=>{
+  if(!token){showErr('No Invitation Token','No token found in this link. Please use the link from your invitation email.');return;}
+  try{
+    const r=await fetch(`/api/invite/${token}`).then(r=>r.json());
+    if(r.error){showErr('Invitation Issue',r.error);return;}
+    document.getElementById('greetName').textContent=`Agreement for ${r.firstName} ${r.lastName}`;
+    document.getElementById('clientName').textContent=`${r.firstName} ${r.lastName}`;
+    document.getElementById('agrText').textContent=r.agreementText;
+  }catch(e){showErr('Error','Could not load the agreement. Please try again or contact Fast Professional Services.');}
+};
+
+function showErr(t,m){
+  document.getElementById('step1').classList.add('hidden');
+  document.getElementById('stepsBar').classList.add('hidden');
+  document.getElementById('errCard').classList.remove('hidden');
+  document.getElementById('errTitle').textContent=t;
+  document.getElementById('errMsg').textContent=m;
+}
+function toggleAccept(){ document.getElementById('acceptBtn').disabled=!document.getElementById('agrCheck').checked; }
+function goStep2(){ setStep(2); }
+
+function checkPw(){
+  const v=document.getElementById('pw1').value;
+  const v2=document.getElementById('pw2').value;
+  const r={'r-len':v.length>=8,'r-num':/[0-9]/.test(v),'r-spc':/[^A-Za-z0-9]/.test(v),'r-upp':/[A-Z]/.test(v)};
+  Object.entries(r).forEach(([id,ok])=>document.getElementById(id).classList.toggle('ok',ok));
+  const score=Object.values(r).filter(Boolean).length;
+  const fill=document.getElementById('strFill');
+  fill.style.width=(score*25)+'%';
+  fill.style.background=['#dc2626','#d97706','#2563eb','#059669','#059669'][score];
+  document.getElementById('pwBtn').disabled=!(r['r-len']&&r['r-num']&&r['r-spc']&&v===v2);
+}
+
+async function submitPassword(){
+  const pw=document.getElementById('pw1').value;
+  const al=document.getElementById('pwAlert'); al.className='alert';
+  if(pw!==document.getElementById('pw2').value){al.className='alert err';al.textContent='Passwords do not match.';return;}
+  try{
+    const r=await fetch(`/api/invite/${token}/accept`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})}).then(r=>r.json());
+    if(r.error){al.className='alert err';al.textContent=r.error;return;}
+    pendingUserId=r.userId;
+    document.getElementById('qrImg').src=r.qrCode;
+    setStep(3);
+  }catch(e){al.className='alert err';al.textContent='Something went wrong. Please try again.';}
+}
+
+async function verify2FA(){
+  const code=document.getElementById('tfaCode').value.trim();
+  const al=document.getElementById('tfaAlert'); al.className='alert';
+  if(!code||code.length!==6){al.className='alert err';al.textContent='Please enter the 6-digit code from your authenticator app.';return;}
+  try{
+    const r=await fetch('/api/invite/verify-2fa',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:pendingUserId,token:code})}).then(r=>r.json());
+    if(r.error){al.className='alert err';al.textContent=r.error;return;}
+    setStep(4);
+  }catch(e){al.className='alert err';al.textContent='Verification failed. Try again.';}
+}
+
+function setStep(n){
+  [1,2,3,4].forEach(i=>{
+    document.getElementById(`step${i}`).classList.toggle('hidden',i!==n);
+    const el=document.getElementById(`st${i}`);
+    el.classList.remove('on','done');
+    if(i===n) el.classList.add('on');
+    if(i<n){el.classList.add('done');el.querySelector('.snum').textContent='✓';}
+    if(i<4) document.getElementById(`sl${i}`)?.classList.toggle('done',i<n);
+  });
+}
+</script>
+</body>
+</html>
