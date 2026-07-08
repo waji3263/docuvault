@@ -316,6 +316,29 @@ async function sendInvitationEmail(user) {
   return sendMail(user.email, `Your Secure Portal Invitation — ${b.corpName}`, html);
 }
 
+async function sendPasswordResetEmail(user) {
+  const cfg  = loadConfig();
+  const b    = cfg.branding;
+  const link = `${getSiteUrl()}/reset-password.html?token=${user.resetToken}`;
+  const html = emailWrap(`
+    <h2 style="color:${b.primaryColor};margin:0 0 8px;">Reset Your Password</h2>
+    <p style="color:#374151;margin:0 0 16px;">Hello <strong>${user.firstName}</strong>,</p>
+    <p style="color:#374151;margin:0 0 16px;">
+      We received a request to reset the password for your <strong>${b.corpName}</strong> secure portal account.
+      Click the button below to choose a new password.
+    </p>
+    <div style="background:#fff8e1;border-left:4px solid ${b.accentColor};padding:12px 16px;border-radius:6px;margin:0 0 22px;">
+      <strong style="color:#92400e;">⏰ This link expires in 1 hour.</strong>
+    </div>
+    <a href="${link}" style="display:inline-block;background:${b.primaryColor};color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+      Reset My Password →
+    </a>
+    <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;">Or copy this link:<br/><span style="color:${b.primaryColor};">${link}</span></p>
+    <p style="color:#9ca3af;font-size:12px;margin:16px 0 0;">If you didn't request this, you can safely ignore this email — your password will not be changed.</p>
+  `);
+  return sendMail(user.email, `Reset Your Password — ${b.corpName}`, html);
+}
+
 async function sendUploadNotification(user, fileName, uploadIp) {
   const cfg = loadConfig();
   const b   = cfg.branding;
@@ -509,6 +532,55 @@ app.post('/api/login-2fa', (req, res) => {
   const jwtToken = jwt.sign({ userId:user.id, email:user.email, name:`${user.firstName} ${user.lastName}`, isAdmin:false }, JWT_SECRET, { expiresIn:'8h' });
   logAudit({ userId, customerName:`${user.firstName} ${user.lastName}`, actor:'customer', action:'login_success', detail:'Logged in', ip:getClientIp(req) });
   res.json({ success:true, token:jwtToken, name:`${user.firstName} ${user.lastName}`, email:user.email });
+});
+
+// ══════════════════════════════════════════════════════════
+//  PASSWORD RESET — self-service, customer accounts only
+// ══════════════════════════════════════════════════════════
+app.post('/api/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error:'Email is required.' });
+  const users = loadUsers();
+  const user  = Object.values(users).find(u => u.email === email && u.status === 'active');
+  if (user) {
+    users[user.id].resetToken   = uuidv4();
+    users[user.id].resetExpires = new Date(Date.now()+60*60*1000).toISOString(); // 1 hour
+    saveUsers(users);
+    await sendPasswordResetEmail(users[user.id]);
+    logAudit({ userId:user.id, customerName:`${user.firstName} ${user.lastName}`, actor:'customer', action:'password_reset_requested', detail:'Password reset email sent', ip:getClientIp(req) });
+  }
+  // Always the same response, whether or not the email exists — avoids leaking which emails are registered.
+  res.json({ success:true });
+});
+
+app.get('/api/reset-password/:token', (req, res) => {
+  const users = loadUsers();
+  const user  = Object.values(users).find(u => u.resetToken === req.params.token);
+  if (!user) return res.status(404).json({ error:'This link is invalid or has already been used.' });
+  if (new Date() > new Date(user.resetExpires))
+    return res.status(410).json({ error:'This link has expired. Please request a new one.' });
+  res.json({ firstName:user.firstName, lastName:user.lastName });
+});
+
+app.post('/api/reset-password/:token', async (req, res) => {
+  const { password } = req.body;
+  if (!password)                       return res.status(400).json({ error:'Password is required.' });
+  if (password.length < 8)             return res.status(400).json({ error:'Password must be at least 8 characters.' });
+  if (!/[0-9]/.test(password))         return res.status(400).json({ error:'Password must contain at least one number.' });
+  if (!/[^A-Za-z0-9]/.test(password)) return res.status(400).json({ error:'Password must contain at least one special character.' });
+
+  const users = loadUsers();
+  const user  = Object.values(users).find(u => u.resetToken === req.params.token);
+  if (!user) return res.status(404).json({ error:'This link is invalid or has already been used.' });
+  if (new Date() > new Date(user.resetExpires))
+    return res.status(410).json({ error:'This link has expired. Please request a new one.' });
+
+  users[user.id].password     = await bcrypt.hash(password, 12);
+  users[user.id].resetToken   = null;
+  users[user.id].resetExpires = null;
+  saveUsers(users);
+  logAudit({ userId:user.id, customerName:`${user.firstName} ${user.lastName}`, actor:'customer', action:'password_reset_completed', detail:'Password reset via email link', ip:getClientIp(req) });
+  res.json({ success:true });
 });
 
 app.post('/api/upload', requireAuth, upload.single('document'), async (req, res) => {
