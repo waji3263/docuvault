@@ -15,6 +15,9 @@ data/audit_log.json
 # Uploaded documents
 uploads/
 
+# Local backup archives
+backups/
+
 # Logs
 *.log
 npm-debug.log*
@@ -22,3 +25,6 @@ npm-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Claude Code session config (not app source)
+.claude/

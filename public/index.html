@@ -257,13 +257,29 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,219,.08);}
       <div id="loginStep1">
         <div class="alert" id="loginErr"></div>
         <div class="fg"><label>Email Address</label><input type="email" id="loginEmail" placeholder="your@email.com"/></div>
-        <div class="fg"><label>Password</label><input type="password" id="loginPw" placeholder="Your password" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+        <div class="fg">
+          <label>Password</label>
+          <input type="password" id="loginPw" placeholder="Your password" onkeydown="if(event.key==='Enter')doLogin()"/>
+          <div style="text-align:right;margin-top:6px;"><a href="#" onclick="showForgot();return false;" style="font-size:12px;color:var(--blue);text-decoration:none;font-weight:600;">Forgot password?</a></div>
+        </div>
         <button class="btn btn-primary btn-full" onclick="doLogin()">Sign In →</button>
       </div>
       <div id="loginStep2" class="hidden">
         <div class="alert info">Enter the 6-digit code from your authenticator app.</div>
         <div class="fg"><label>Authentication Code</label><input type="number" id="twoFaCode" placeholder="000000" class="code-input" onkeydown="if(event.key==='Enter')do2FALogin()"/></div>
         <button class="btn btn-primary btn-full" onclick="do2FALogin()">Verify &amp; Sign In →</button>
+      </div>
+      <div id="loginStep3" class="hidden">
+        <div class="alert" id="forgotErr"></div>
+        <div id="forgotForm">
+          <p style="font-size:13px;color:var(--g600);margin-bottom:16px;">Enter your email and we'll send you a link to reset your password.</p>
+          <div class="fg"><label>Email Address</label><input type="email" id="forgotEmail" placeholder="your@email.com" onkeydown="if(event.key==='Enter')doForgotPassword()"/></div>
+          <button class="btn btn-primary btn-full" onclick="doForgotPassword()">Send Reset Link</button>
+        </div>
+        <div id="forgotSent" class="hidden">
+          <div class="alert ok" style="display:block;">Check your email — if an account exists for that address, a reset link has been sent. The link expires in 1 hour.</div>
+        </div>
+        <button class="btn btn-ghost btn-full" style="margin-top:10px;" onclick="backToSignIn()">← Back to Sign In</button>
       </div>
     </div>
 
@@ -348,6 +364,11 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,219,.08);}
       <div class="alert" id="uploadAlert" style="margin-top:12px;margin-bottom:0;"></div>
     </div>
 
+    <div class="panel" id="taxReturnsPanel" style="display:none;">
+      <div class="panel-title">🧾 Tax Returns</div>
+      <div id="taxReturnsList"></div>
+    </div>
+
     <div class="panel">
       <div class="panel-title">📁 My Documents</div>
       <div id="docList"><div class="empty"><div class="empty-ico">📭</div><p>No documents yet. Upload your first file above.</p></div></div>
@@ -371,7 +392,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,219,.08);}
 let authToken = localStorage.getItem('fpToken') || null;
 let pendingUserId = null;
 
-window.onload = () => { if(authToken){showDashboard();loadDocs();}else{showLanding();} };
+window.onload = () => { if(authToken){showDashboard();loadDocs();loadTaxReturns();}else{showLanding();} };
 
 function showLanding(){ document.getElementById('landing').style.display='flex'; document.getElementById('authPage').classList.remove('active'); document.getElementById('dashPage').classList.remove('active'); }
 function showAuth(tab){ document.getElementById('landing').style.display='none'; document.getElementById('authPage').classList.add('active'); document.getElementById('dashPage').classList.remove('active'); switchTab(tab||'login'); }
@@ -382,6 +403,30 @@ function switchTab(tab){
   document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',(tab==='login'&&i===0)||(tab==='register'&&i===1)));
   document.getElementById('loginPanel').classList.toggle('active',tab==='login');
   document.getElementById('registerPanel').classList.toggle('active',tab==='register');
+}
+
+function showForgot(){
+  document.getElementById('loginStep1').classList.add('hidden');
+  document.getElementById('loginStep2').classList.add('hidden');
+  document.getElementById('loginStep3').classList.remove('hidden');
+  document.getElementById('forgotForm').classList.remove('hidden');
+  document.getElementById('forgotSent').classList.add('hidden');
+  document.getElementById('forgotErr').className='alert';
+  document.getElementById('forgotEmail').value='';
+}
+function backToSignIn(){
+  document.getElementById('loginStep3').classList.add('hidden');
+  document.getElementById('loginStep1').classList.remove('hidden');
+}
+async function doForgotPassword(){
+  const e=document.getElementById('forgotErr'); e.className='alert';
+  const email=document.getElementById('forgotEmail').value.trim();
+  if(!email){ e.className='alert err'; e.textContent='Please enter your email address.'; return; }
+  try{
+    await api('/api/forgot-password','POST',{email});
+    document.getElementById('forgotForm').classList.add('hidden');
+    document.getElementById('forgotSent').classList.remove('hidden');
+  }catch(err){ e.className='alert err'; e.textContent=err.message; }
 }
 
 async function doLogin(){
@@ -397,7 +442,7 @@ async function do2FALogin(){
   try{
     const r=await api('/api/login-2fa','POST',{userId:pendingUserId,token:document.getElementById('twoFaCode').value});
     authToken=r.token; localStorage.setItem('fpToken',authToken); localStorage.setItem('fpName',r.name);
-    showDashboard(); loadDocs();
+    showDashboard(); loadDocs(); loadTaxReturns();
   }catch(err){ e.className='alert err'; e.textContent=err.message; document.getElementById('loginStep1').classList.remove('hidden'); document.getElementById('loginStep2').classList.add('hidden'); }
 }
 async function verify2FASetup(){
@@ -407,6 +452,24 @@ async function verify2FASetup(){
 }
 function doLogout(){ authToken=null; localStorage.removeItem('fpToken'); localStorage.removeItem('fpName'); showLanding(); }
 
+async function loadTaxReturns(){
+  try{
+    const r=await api('/api/tax-returns');
+    const panel=document.getElementById('taxReturnsPanel');
+    const list=document.getElementById('taxReturnsList');
+    if(!r.taxReturns||!r.taxReturns.length){ panel.style.display='none'; return; }
+    panel.style.display='block';
+    list.innerHTML='<div class="doc-list">'+r.taxReturns.map(d=>`
+      <div class="doc-item">
+        <div class="doc-ico">${fIcon(d.originalName)}</div>
+        <div class="doc-info">
+          <div class="doc-name">${esc(d.originalName)}</div>
+          <div class="doc-meta">${fmtSize(d.size)} · ${fmtDate(d.uploadedAt)}</div>
+        </div>
+        <a class="btn btn-primary btn-xs" href="/api/tax-returns/${d.id}/download?token=${authToken}" download="${esc(d.originalName)}">Download</a>
+      </div>`).join('')+'</div>';
+  }catch(e){ console.error(e); }
+}
 async function loadDocs(){
   try{
     const r=await api('/api/documents');

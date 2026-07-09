@@ -196,6 +196,126 @@ function runAutoDeleteSweep() {
   }
 }
 
+// ─── Backups ─────────────────────────────────────────────────────────────
+// Zips data/ + uploads/ (everything) to backups/, on a schedule or on demand.
+// Stored on local disk only — no cloud credentials required. Newest BACKUP_RETENTION
+// backups are kept; older ones are pruned automatically after each run.
+const AdmZip = require('adm-zip');
+const BACKUPS_DIR = path.join(__dirname, 'backups');
+const BACKUP_RETENTION = 10;
+fs.mkdirSync(BACKUPS_DIR, { recursive:true });
+
+function listBackupFiles() {
+  if (!fs.existsSync(BACKUPS_DIR)) return [];
+  return fs.readdirSync(BACKUPS_DIR)
+    .filter(f => f.endsWith('.zip'))
+    .map(f => {
+      const stat = fs.statSync(path.join(BACKUPS_DIR, f));
+      return { filename:f, size:stat.size, createdAt:stat.birthtime.toISOString() };
+    })
+    .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+function pruneOldBackups() {
+  const files = listBackupFiles();
+  files.slice(BACKUP_RETENTION).forEach(f => {
+    try { fs.unlinkSync(path.join(BACKUPS_DIR, f.filename)); } catch(e) { console.error('Prune failed:', e.message); }
+  });
+}
+
+async function runBackup(label) {
+  const zip = new AdmZip();
+  const dataDir = path.join(__dirname, 'data');
+  if (fs.existsSync(dataDir))    zip.addLocalFolder(dataDir, 'data');
+  if (fs.existsSync(UPLOADS_DIR)) zip.addLocalFolder(UPLOADS_DIR, 'uploads');
+  const filename = `backup-${label||'manual'}-${Date.now()}.zip`;
+  zip.writeZip(path.join(BACKUPS_DIR, filename));
+  pruneOldBackups();
+
+  const cfg = loadConfig();
+  cfg.lastBackupAt = new Date().toISOString();
+  saveConfig(cfg);
+
+  logAudit({ userId:null, customerName:'System', actor:'system', action:'backup_completed', detail:filename });
+
+  if (cfg.adminEmail) {
+    const b = cfg.branding;
+    await sendMail(cfg.adminEmail, `Backup Completed — ${b.corpName}`, emailWrap(`
+      <h2 style="color:${b.primaryColor};margin:0 0 12px;">Backup Completed ✅</h2>
+      <p style="color:#374151;margin:0 0 8px;">A backup of your DocuVault portal completed successfully.</p>
+      <table style="width:100%;border-collapse:collapse;background:#f9fafb;border-radius:8px;overflow:hidden;margin-top:10px;">
+        <tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:10px 14px;color:#6b7280;font-weight:600;width:120px;">File</td><td style="padding:10px 14px;font-family:monospace;color:#111827;">${filename}</td></tr>
+        <tr><td style="padding:10px 14px;color:#6b7280;font-weight:600;">Completed At</td><td style="padding:10px 14px;color:#111827;">${new Date().toLocaleString('en-GB')}</td></tr>
+      </table>
+      <p style="margin-top:18px;padding:12px 14px;background:#eff4ff;border-radius:8px;color:${b.primaryColor};font-size:13px;">Manage backups from the admin panel's Backups tab.</p>
+    `));
+  }
+  return filename;
+}
+
+function computeNextBackupDate(from, frequency) {
+  const d = new Date(from);
+  if (frequency === 'daily')         d.setDate(d.getDate()+1);
+  else if (frequency === 'weekly')   d.setDate(d.getDate()+7);
+  else if (frequency === 'biweekly') d.setDate(d.getDate()+14);
+  else if (frequency === 'monthly')  d.setMonth(d.getMonth()+1);
+  return d;
+}
+
+// Hourly check — same cadence as runAutoDeleteSweep — runs a backup when due.
+function runScheduledBackupCheck() {
+  const cfg = loadConfig();
+  if (!cfg.backupSchedule || cfg.backupSchedule === 'manual') return;
+  if (!cfg.nextBackupAt || new Date() >= new Date(cfg.nextBackupAt)) {
+    runBackup('scheduled').then(() => {
+      const c = loadConfig();
+      c.nextBackupAt = computeNextBackupDate(new Date(), c.backupSchedule).toISOString();
+      saveConfig(c);
+    }).catch(e => console.error('Scheduled backup failed:', e.message));
+  }
+}
+
+// Restores data/ + uploads/ from a backup zip. Always takes a fresh safety
+// backup of current state first. super_admin only (enforced at the route).
+async function restoreBackup(filename, adminName) {
+  const zipPath = path.join(BACKUPS_DIR, filename);
+  if (!fs.existsSync(zipPath)) throw new Error('Backup file not found.');
+
+  await runBackup('pre-restore-safety');
+
+  const zip = new AdmZip(zipPath);
+  const tmpDir = path.join(__dirname, `.restore-tmp-${Date.now()}`);
+  zip.extractAllTo(tmpDir, true);
+
+  const extractedData = path.join(tmpDir, 'data');
+  const extractedUploads = path.join(tmpDir, 'uploads');
+  if (!fs.existsSync(path.join(extractedData, 'users.json'))) {
+    fs.rmSync(tmpDir, { recursive:true, force:true });
+    throw new Error('Backup archive is invalid or corrupted — restore aborted, nothing was changed.');
+  }
+
+  const liveDataDir = path.join(__dirname, 'data');
+  fs.rmSync(liveDataDir, { recursive:true, force:true });
+  fs.renameSync(extractedData, liveDataDir);
+
+  fs.rmSync(UPLOADS_DIR, { recursive:true, force:true });
+  if (fs.existsSync(extractedUploads)) fs.renameSync(extractedUploads, UPLOADS_DIR);
+  else fs.mkdirSync(UPLOADS_DIR, { recursive:true });
+
+  fs.rmSync(tmpDir, { recursive:true, force:true });
+
+  logAudit({ userId:null, customerName:adminName||'Admin', actor:'admin', action:'backup_restored', detail:filename });
+
+  const cfg = loadConfig();
+  if (cfg.adminEmail) {
+    const b = cfg.branding;
+    await sendMail(cfg.adminEmail, `Backup Restored — ${b.corpName}`, emailWrap(`
+      <h2 style="color:${b.primaryColor};margin:0 0 12px;">Backup Restored ⚠️</h2>
+      <p style="color:#374151;">Your DocuVault portal was restored from backup <strong>${filename}</strong> at ${new Date().toLocaleString('en-GB')}. A safety backup of the prior state was taken automatically before the restore.</p>
+    `));
+  }
+}
+
 // ─── Users ────────────────────────────────────────────────────────────────
 function loadUsers() {
   if (!fs.existsSync(DATA_FILE)) return {};
@@ -437,6 +557,21 @@ const docStorage = multer.diskStorage({
 const upload     = multer({ storage: docStorage, limits:{ fileSize: 50*1024*1024 } });
 const logoUpload = multer({ dest: path.join(__dirname,'public'), limits:{ fileSize: 2*1024*1024 } });
 const importUpload = multer({ storage: multer.memoryStorage(), limits:{ fileSize: 5*1024*1024 } });
+
+// Admin-managed "Tax Returns" folder — destination is keyed by the target client
+// (req.params.userId), not the uploader, since only admins upload here.
+const taxReturnStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const users = loadUsers();
+    const user  = users[req.params.userId];
+    if (!user) return cb(new Error('Customer not found.'));
+    const folder = path.join(UPLOADS_DIR, user.folderName, 'Tax_Returns');
+    fs.mkdirSync(folder, { recursive:true });
+    cb(null, folder);
+  },
+  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
+});
+const taxReturnUpload = multer({ storage: taxReturnStorage, limits:{ fileSize: 50*1024*1024 } });
 
 // ══════════════════════════════════════════════════════════
 //  PUBLIC — BRANDING (used by all pages on load)
@@ -841,6 +976,98 @@ app.post('/api/admin/customers/:userId/documents/:docId/status', requireAuth, re
 });
 
 // ══════════════════════════════════════════════════════════
+//  TAX RETURNS — admin-managed, client view/download only.
+//  Any admin role (super_admin/admin/limited_admin) can add or remove files here;
+//  the client can view and download but never modify this folder.
+// ══════════════════════════════════════════════════════════
+
+// Admin: upload a tax return for a client
+app.post('/api/admin/customers/:userId/tax-returns', requireAuth, requireAdmin, taxReturnUpload.single('document'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error:'No file uploaded.' });
+  const users = loadUsers();
+  const user  = users[req.params.userId];
+  if (!user) return res.status(404).json({ error:'Customer not found.' });
+
+  const docRecord = {
+    id: uuidv4(),
+    originalName: req.file.originalname,
+    storedName:   req.file.filename,
+    size:         req.file.size,
+    mimetype:     req.file.mimetype,
+    uploadedAt:   new Date().toISOString(),
+    uploadedBy:   req.adminName || 'Admin',
+  };
+  if (!user.taxReturns) user.taxReturns = [];
+  user.taxReturns.push(docRecord);
+
+  const msgText = `A new tax document "${req.file.originalname}" is ready for you to view in Tax Returns.`;
+  if (!user.messages) user.messages = [];
+  const msg = { id: uuidv4(), from:'admin', text: msgText, sentAt: new Date().toISOString(), readByAdmin:true, readByCustomer:false, isStatusUpdate:true };
+  user.messages.push(msg);
+  saveUsers(users);
+
+  logAudit({ userId:user.id, customerName:`${user.firstName} ${user.lastName}`, actor:'admin', action:'tax_return_uploaded', detail:req.file.originalname });
+  pushCustomer(user.id, { type:'message', text: msgText, sentAt: msg.sentAt });
+  pushCustomer(user.id, { type:'tax_return_added', document: docRecord });
+
+  res.json({ success:true, document: docRecord });
+});
+
+// Admin: remove a tax return
+app.delete('/api/admin/customers/:userId/tax-returns/:docId', requireAuth, requireAdmin, (req, res) => {
+  const users = loadUsers();
+  const user  = users[req.params.userId];
+  if (!user) return res.status(404).json({ error:'Customer not found.' });
+  const doc = (user.taxReturns||[]).find(d => d.id === req.params.docId);
+  if (!doc) return res.status(404).json({ error:'Document not found.' });
+  const fp = path.join(UPLOADS_DIR, user.folderName, 'Tax_Returns', doc.storedName);
+  if (fs.existsSync(fp)) fs.unlinkSync(fp);
+  user.taxReturns = user.taxReturns.filter(d => d.id !== req.params.docId);
+  saveUsers(users);
+  logAudit({ userId:user.id, customerName:`${user.firstName} ${user.lastName}`, actor:'admin', action:'tax_return_deleted', detail:doc.originalName });
+  res.json({ success:true });
+});
+
+// Client: list their own tax returns
+app.get('/api/tax-returns', requireAuth, (req, res) => {
+  if (req.isAdmin) return res.status(403).json({ error:'Use the admin customer routes instead.' });
+  const users = loadUsers();
+  const user  = users[req.userId];
+  if (!user) return res.status(404).json({ error:'User not found.' });
+  res.json({ taxReturns: user.taxReturns || [] });
+});
+
+// Client: download one of their own tax returns
+// Accepts the token via the Authorization header (mobile app) or a ?token= query
+// param (plain browser <a href> download links can't set headers).
+app.get('/api/tax-returns/:docId/download', (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1] || req.query.token;
+  let payload;
+  try { payload = jwt.verify(token, JWT_SECRET); if (payload.isAdmin) throw 0; }
+  catch { return res.status(401).json({ error:'Not authenticated' }); }
+  const users = loadUsers();
+  const user  = users[payload.userId];
+  if (!user) return res.status(404).json({ error:'User not found.' });
+  const doc = (user.taxReturns||[]).find(d => d.id === req.params.docId);
+  if (!doc) return res.status(404).json({ error:'Document not found.' });
+  const fp = path.join(UPLOADS_DIR, user.folderName, 'Tax_Returns', doc.storedName);
+  if (!fs.existsSync(fp)) return res.status(404).json({ error:'File not on disk.' });
+  res.download(fp, doc.originalName);
+});
+
+// Admin: download a client's tax return (token via query string, matches the existing admin document-download pattern)
+app.get('/api/admin/tax-returns/:userId/:docId/download', (req, res) => {
+  try { const d=jwt.verify(req.query.token,JWT_SECRET); if(!d.isAdmin) throw 0; } catch { return res.status(401).end(); }
+  const users=loadUsers(); const user=users[req.params.userId];
+  if(!user) return res.status(404).end();
+  const doc=(user.taxReturns||[]).find(d=>d.id===req.params.docId);
+  if(!doc)  return res.status(404).end();
+  const fp=path.join(UPLOADS_DIR,user.folderName,'Tax_Returns',doc.storedName);
+  if(!fs.existsSync(fp)) return res.status(404).json({ error:'File not on disk.' });
+  res.download(fp, doc.originalName);
+});
+
+// ══════════════════════════════════════════════════════════
 //  AUDIT LOG
 // ══════════════════════════════════════════════════════════
 app.get('/api/admin/audit-log', requireAuth, requireRole(r=>r==='super_admin'||r==='admin'), (req, res) => {
@@ -1030,7 +1257,7 @@ function createCustomerRecord(firstName, lastName, email, ssn4) {
     id:userId, firstName, lastName, name:`${firstName} ${lastName}`, email, ssn4, folderName,
     status:'invited', inviteToken, inviteExpires, inviteSentAt:new Date().toISOString(),
     agreementAccepted:null, agreementIp:null, password:null, twoFactorSecret:null, twoFactorEnabled:false,
-    createdAt:new Date().toISOString(), documents:[], messages:[], checklist:[]
+    createdAt:new Date().toISOString(), documents:[], messages:[], checklist:[], taxReturns:[]
   };
 }
 
@@ -1044,6 +1271,7 @@ app.post('/api/admin/customers', requireAuth, requireRole(r=>r==='super_admin'||
   users[record.id] = record;
   saveUsers(users);
   fs.mkdirSync(path.join(UPLOADS_DIR, record.folderName), { recursive:true });
+  fs.mkdirSync(path.join(UPLOADS_DIR, record.folderName, 'Tax_Returns'), { recursive:true });
   logAudit({ userId:record.id, customerName:`${firstName} ${lastName}`, actor:'admin', action:'client_created', detail:`Folder: ${record.folderName}` });
   res.json({ success:true, userId:record.id, folderName:record.folderName });
 });
@@ -1155,6 +1383,7 @@ app.post('/api/admin/customers/import-confirm', requireAuth, requireRole(r=>r===
     const record = createCustomerRecord(firstName, lastName, email, ssn4);
     users[record.id] = record;
     fs.mkdirSync(path.join(UPLOADS_DIR, record.folderName), { recursive:true });
+    fs.mkdirSync(path.join(UPLOADS_DIR, record.folderName, 'Tax_Returns'), { recursive:true });
     created.push(record);
   }
   saveUsers(users);
@@ -1199,6 +1428,9 @@ app.get('/api/admin/customers', requireAuth, requireAdmin, (req, res) => {
         storedName:d.storedName, uploadIp:d.uploadIp||'—',
         category:d.category||'Others', status:d.status||'pending', statusNote:d.statusNote||'',
         statusUpdatedAt:d.statusUpdatedAt||null, versionGroupId:d.versionGroupId||d.id, versionNumber:d.versionNumber||1
+      })),
+      taxReturns:(u.taxReturns||[]).map(d=>({
+        id:d.id, originalName:d.originalName, size:d.size, uploadedAt:d.uploadedAt, uploadedBy:d.uploadedBy||'Admin'
       }))
     }));
   res.json({ customers:list });
@@ -1316,6 +1548,65 @@ app.post('/api/admin/run-auto-delete', requireAuth, requireRole(r=>r==='super_ad
   res.json({ success:true });
 });
 
+// ══════════════════════════════════════════════════════════
+//  BACKUPS — local-disk, super_admin only (contains every client's data)
+// ══════════════════════════════════════════════════════════
+app.get('/api/admin/backups', requireAuth, requireRole(r=>r==='super_admin'), (req, res) => {
+  const cfg = loadConfig();
+  res.json({
+    backups: listBackupFiles(),
+    schedule: cfg.backupSchedule || 'manual',
+    nextBackupAt: cfg.nextBackupAt || null,
+    lastBackupAt: cfg.lastBackupAt || null,
+  });
+});
+
+app.post('/api/admin/backups/run', requireAuth, requireRole(r=>r==='super_admin'), async (req, res) => {
+  try {
+    const filename = await runBackup('manual');
+    logAudit({ userId:null, customerName:req.adminName||'Admin', actor:'admin', action:'backup_run_manual', detail:filename });
+    res.json({ success:true, filename });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Backup failed.' });
+  }
+});
+
+app.post('/api/admin/backups/schedule', requireAuth, requireRole(r=>r==='super_admin'), (req, res) => {
+  const { schedule } = req.body;
+  if (!['manual','daily','weekly','biweekly','monthly'].includes(schedule))
+    return res.status(400).json({ error:'Invalid schedule.' });
+  const cfg = loadConfig();
+  cfg.backupSchedule = schedule;
+  cfg.nextBackupAt = schedule === 'manual' ? null : computeNextBackupDate(new Date(), schedule).toISOString();
+  saveConfig(cfg);
+  logAudit({ userId:null, customerName:req.adminName||'Admin', actor:'admin', action:'backup_schedule_changed', detail:schedule });
+  res.json({ success:true, nextBackupAt: cfg.nextBackupAt });
+});
+
+// Token via query string — matches the existing admin document-download pattern (opened directly, not fetched).
+app.get('/api/admin/backups/:filename/download', (req, res) => {
+  try { const d=jwt.verify(req.query.token,JWT_SECRET); if(!d.isAdmin||d.role!=='super_admin') throw 0; } catch { return res.status(401).end(); }
+  const fp = path.join(BACKUPS_DIR, path.basename(req.params.filename));
+  if (!fs.existsSync(fp)) return res.status(404).end();
+  res.download(fp);
+});
+
+app.delete('/api/admin/backups/:filename', requireAuth, requireRole(r=>r==='super_admin'), (req, res) => {
+  const fp = path.join(BACKUPS_DIR, path.basename(req.params.filename));
+  if (fs.existsSync(fp)) fs.unlinkSync(fp);
+  logAudit({ userId:null, customerName:req.adminName||'Admin', actor:'admin', action:'backup_deleted', detail:req.params.filename });
+  res.json({ success:true });
+});
+
+app.post('/api/admin/backups/:filename/restore', requireAuth, requireRole(r=>r==='super_admin'), async (req, res) => {
+  try {
+    await restoreBackup(path.basename(req.params.filename), req.adminName);
+    res.json({ success:true });
+  } catch (e) {
+    res.status(500).json({ error: e.message || 'Restore failed.' });
+  }
+});
+
 // ─── Start ────────────────────────────────────────────────────────────────
 const cfg = loadConfig();
 app.listen(PORT, () => {
@@ -1325,9 +1616,14 @@ app.listen(PORT, () => {
   console.log(`   Notify  → ${cfg.adminEmail}`);
   console.log(cfg.smtp?.pass ? `   Email  ✅ via ${cfg.smtp.user}` : `   Email  ⚠️  SMTP password not set`);
   console.log(cfg.autoDeleteHours > 0 ? `   Retention  🧹 Auto-delete after ${cfg.autoDeleteHours}h` : `   Retention  ⚪ Auto-delete disabled`);
+  console.log(cfg.backupSchedule && cfg.backupSchedule !== 'manual' ? `   Backups  💾 ${cfg.backupSchedule}` : `   Backups  ⚪ Manual only`);
   console.log('');
 
   // Run an initial sweep shortly after boot, then every hour
   setTimeout(runAutoDeleteSweep, 10000);
   setInterval(runAutoDeleteSweep, 60*60*1000);
+
+  // Same cadence for the scheduled-backup check
+  setTimeout(runScheduledBackupCheck, 15000);
+  setInterval(runScheduledBackupCheck, 60*60*1000);
 });

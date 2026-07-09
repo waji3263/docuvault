@@ -386,6 +386,7 @@ textarea{resize:vertical;}
       <button class="tab" id="tabBtnBranding" onclick="showTab('branding')">🎨 Branding</button>
       <button class="tab" id="tabBtnAudit" onclick="showTab('audit')">📋 Audit Log</button>
       <button class="tab" id="tabBtnAdmins" onclick="showTab('admins')">👑 Admin Accounts</button>
+      <button class="tab" id="tabBtnBackups" onclick="showTab('backups')">💾 Backups</button>
     </div>
 
     <!-- CLIENTS TAB -->
@@ -613,6 +614,41 @@ textarea{resize:vertical;}
       </div>
     </div>
 
+    <!-- BACKUPS TAB (Super Admin only) -->
+    <div id="tabBackups" class="hidden">
+      <div class="card">
+        <div class="chd">
+          <div class="cht">Backup Schedule</div>
+        </div>
+        <p style="font-size:13px;color:var(--g600);margin:0 0 14px;">Backups include everything — all client data and documents — and are stored on this server. Download a copy periodically to keep an off-server copy too.</p>
+        <div class="fg">
+          <label>Frequency</label>
+          <select id="backupScheduleSel">
+            <option value="manual">Manual only</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="biweekly">Every 2 weeks</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+        <div class="al" id="backupScheduleErr"></div>
+        <button class="btn bp bsm" onclick="saveBackupSchedule()">Save Schedule</button>
+        <div style="margin-top:14px;font-size:12px;color:var(--g400);">
+          <div>Last backup: <strong id="lastBackupAt" style="color:var(--g600);">—</strong></div>
+          <div>Next scheduled backup: <strong id="nextBackupAt" style="color:var(--g600);">—</strong></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="chd">
+          <div class="cht">Backups <span style="font-weight:400;color:var(--g400);font-size:12px;">newest 10 kept, older ones pruned automatically</span></div>
+          <button class="btn bp bsm" onclick="runBackupNow()" id="runBackupBtn">💾 Run Backup Now</button>
+        </div>
+        <div class="al" id="backupRunErr"></div>
+        <div id="backupsList"><div style="text-align:center;padding:40px;color:var(--g400);">Loading…</div></div>
+      </div>
+    </div>
+
     <!-- ADMIN ACCOUNTS TAB (Super Admin only) -->
     <div id="tabAdmins" class="hidden">
       <div class="sc">
@@ -714,6 +750,20 @@ textarea{resize:vertical;}
   </div>
 </div>
 
+<!-- RESTORE BACKUP MODAL -->
+<div class="ov" id="restoreBackupModal">
+  <div class="modal" style="max-width:460px;">
+    <div class="mt">⚠️ Restore From Backup</div>
+    <div class="ms">This <strong>overwrites all current data</strong> — every client, document, and message — with what's in <strong id="restoreFileName">—</strong>. A safety backup of the current state is taken automatically first, but this is otherwise not undoable from here.</div>
+    <div class="al" id="restoreBackupErr"></div>
+    <div class="fg"><label>Type RESTORE to confirm</label><input type="text" id="restoreConfirmInput" placeholder="RESTORE"/></div>
+    <div class="mf">
+      <button class="btn bgh" onclick="closeModal('restoreBackupModal')">Cancel</button>
+      <button class="btn brd" onclick="submitRestoreBackup()">Restore &amp; Overwrite Everything</button>
+    </div>
+  </div>
+</div>
+
 <script>
 let tk=sessionStorage.getItem('fpAdminTk');
 let allC=[];
@@ -805,6 +855,7 @@ function applyRoleGating(){
   document.getElementById('tabBtnAudit').classList.toggle('hidden', !myPerms.viewAuditLog);
   document.getElementById('tabBtnSettings').classList.toggle('hidden', !(myPerms.editEmailConfig||myPerms.editAgreement));
   document.getElementById('tabBtnBranding').classList.toggle('hidden', !myPerms.editBranding);
+  document.getElementById('tabBtnBackups').classList.toggle('hidden', !myPerms.manageAdmins);
 }
 
 function startSSE(){
@@ -914,6 +965,29 @@ function renderList(customers){
                 <button class="btn brd bxs role-delete-doc" onclick="delDoc('${c.id}','${d.id}')">Delete</button>
               </div>
             </div>`).join('')}
+
+        <div class="checklist-mgmt">
+          <div class="msg-toggle-label" style="margin-bottom:8px;display:flex;align-items:center;gap:6px;justify-content:space-between;">
+            <span>🧾 Tax Returns <span style="font-weight:400;color:var(--g400);font-size:11px;">(admin-managed — client can view/download only)</span></span>
+            <label class="btn bp bxs" style="cursor:pointer;margin:0;">＋ Upload
+              <input type="file" style="display:none;" onchange="uploadTaxReturnFile('${c.id}',this)"/>
+            </label>
+          </div>
+          ${(c.taxReturns||[]).length===0?'<div style="font-size:12px;color:var(--g400);">No tax returns uploaded yet.</div>'
+            :c.taxReturns.map(d=>`
+              <div class="di">
+                <div class="dico">${fIcon(d.originalName)}</div>
+                <div class="dinf">
+                  <div class="dn" title="${esc(d.originalName)}">${esc(d.originalName)}</div>
+                  <div class="dm">${fmtSz(d.size)} · ${fmtD(d.uploadedAt)} · by ${esc(d.uploadedBy||'Admin')}</div>
+                </div>
+                <div class="dac">
+                  <a class="btn bgr bxs" href="/api/admin/tax-returns/${c.id}/${d.id}/download?token=${tk}" download="${esc(d.originalName)}">⬇ Download</a>
+                  <button class="btn brd bxs" onclick="delTaxReturn('${c.id}','${d.id}')">Delete</button>
+                </div>
+              </div>`).join('')}
+        </div>
+
         ${c.agreementAccepted?`<div class="sigbox">✍️ Agreement signed ${fmtD(c.agreementAccepted)} · IP: <span class="iptag">${c.agreementIp||'—'}</span></div>`:''}
 
         <div class="checklist-mgmt">
@@ -987,12 +1061,25 @@ async function createCustomer(){
 }
 async function sendInvite(uid,name){if(!confirm(`Send invitation to ${name}?`))return;try{const r=await api(`/api/admin/customers/${uid}/invite`,'POST');alert(r.success?`✅ Invitation sent!`:'Email failed: '+r.error);loadCustomers();}catch(e){alert('Error: '+e.message);}}
 async function delDoc(uid,did){if(!confirm('Delete this document?'))return;try{await api(`/api/admin/customers/${uid}/documents/${did}`,'DELETE');loadCustomers();}catch(e){alert(e.message);}}
+
+async function uploadTaxReturnFile(uid,inputEl){
+  const file=inputEl.files[0]; if(!file) return;
+  const fd=new FormData(); fd.append('document',file);
+  try{
+    const res=await fetch(`/api/admin/customers/${uid}/tax-returns`,{method:'POST',headers:{'Authorization':`Bearer ${tk}`},body:fd});
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Upload failed.');
+    loadCustomers();
+  }catch(e){ alert('Upload failed: '+e.message); }
+  finally{ inputEl.value=''; }
+}
+async function delTaxReturn(uid,did){if(!confirm('Delete this tax return? The client will no longer be able to see or download it.'))return;try{await api(`/api/admin/customers/${uid}/tax-returns/${did}`,'DELETE');loadCustomers();}catch(e){alert(e.message);}}
 async function delClient(uid,name){if(!confirm(`Remove client "${name}" and ALL documents?\n\nCannot be undone.`))return;try{await api(`/api/admin/customers/${uid}`,'DELETE');loadCustomers();}catch(e){alert(e.message);}}
 
 // SETTINGS
 function showTab(t){
   document.querySelectorAll('.tab').forEach(el=>el.classList.remove('on'));
-  const map={clients:'tabClients',settings:'tabBtnSettings',branding:'tabBtnBranding',audit:'tabBtnAudit',admins:'tabBtnAdmins'};
+  const map={clients:'tabClients',settings:'tabBtnSettings',branding:'tabBtnBranding',audit:'tabBtnAudit',admins:'tabBtnAdmins',backups:'tabBtnBackups'};
   if(t==='clients') document.querySelector('.tab').classList.add('on');
   else document.getElementById(map[t])?.classList.add('on');
   document.getElementById('tabClients').classList.toggle('hidden',t!=='clients');
@@ -1000,10 +1087,12 @@ function showTab(t){
   document.getElementById('tabBranding').classList.toggle('hidden',t!=='branding');
   document.getElementById('tabAudit').classList.toggle('hidden',t!=='audit');
   document.getElementById('tabAdmins').classList.toggle('hidden',t!=='admins');
+  document.getElementById('tabBackups').classList.toggle('hidden',t!=='backups');
   if(t==='settings') loadSettings();
   if(t==='branding') loadBranding();
   if(t==='audit') { populateAuditFilter(); loadAuditLog(); }
   if(t==='admins') loadAdminAccounts();
+  if(t==='backups') loadBackups();
 }
 async function loadSettings(){
   try{
@@ -1379,6 +1468,77 @@ async function loadAdminAccounts(){
   }catch(e){el.innerHTML=`<div style="text-align:center;padding:40px;color:var(--red);">${e.message}</div>`;}
 }
 function myAdminId(){ try{ const payload=JSON.parse(atob(tk.split('.')[1])); return payload.adminId; }catch{return null;} }
+
+// ─── BACKUPS ────────────────────────────────────────────────────────────
+async function loadBackups(){
+  const el=document.getElementById('backupsList');
+  el.innerHTML='<div style="text-align:center;padding:40px;color:var(--g400);">Loading…</div>';
+  try{
+    const r=await api('/api/admin/backups');
+    document.getElementById('backupScheduleSel').value=r.schedule||'manual';
+    document.getElementById('lastBackupAt').textContent=r.lastBackupAt?fmtD(r.lastBackupAt):'Never';
+    document.getElementById('nextBackupAt').textContent=r.nextBackupAt?fmtD(r.nextBackupAt):'Not scheduled';
+    if(!r.backups.length){ el.innerHTML='<div style="text-align:center;padding:40px;color:var(--g400);">No backups yet. Click "Run Backup Now" to create the first one.</div>'; return; }
+    el.innerHTML=r.backups.map(b=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid var(--g100);">
+        <div style="font-size:20px;">🗄️</div>
+        <div style="flex:1;min-width:0;">
+          <div class="cn" style="font-family:monospace;font-size:13px;">${esc(b.filename)}</div>
+          <div style="font-size:12px;color:var(--g400);">${fmtSz(b.size)} · ${fmtD(b.createdAt)}</div>
+        </div>
+        <a class="btn bgh bxs" href="/api/admin/backups/${encodeURIComponent(b.filename)}/download?token=${tk}" download>⬇ Download</a>
+        <button class="btn bgh bxs" onclick="openRestoreModal('${esc(b.filename)}')">↺ Restore</button>
+        <button class="btn brd bxs" onclick="deleteBackup('${esc(b.filename)}')">Delete</button>
+      </div>`).join('');
+  }catch(e){ el.innerHTML=`<div style="text-align:center;padding:40px;color:var(--red);">${e.message}</div>`; }
+}
+
+async function saveBackupSchedule(){
+  const e=document.getElementById('backupScheduleErr'); e.className='al';
+  try{
+    await api('/api/admin/backups/schedule','POST',{schedule:document.getElementById('backupScheduleSel').value});
+    e.className='al ok'; e.textContent='✅ Schedule saved.';
+    loadBackups();
+  }catch(err){ e.className='al err'; e.textContent=err.message; }
+}
+
+async function runBackupNow(){
+  const btn=document.getElementById('runBackupBtn'); const e=document.getElementById('backupRunErr'); e.className='al';
+  btn.disabled=true; btn.textContent='Running…';
+  try{
+    await api('/api/admin/backups/run','POST');
+    e.className='al ok'; e.textContent='✅ Backup completed.';
+    loadBackups();
+  }catch(err){ e.className='al err'; e.textContent=err.message; }
+  finally{ btn.disabled=false; btn.textContent='💾 Run Backup Now'; }
+}
+
+async function deleteBackup(filename){
+  if(!confirm(`Delete backup "${filename}"? This cannot be undone.`)) return;
+  try{ await api(`/api/admin/backups/${encodeURIComponent(filename)}`,'DELETE'); loadBackups(); }
+  catch(e){ alert(e.message); }
+}
+
+let restoreTargetFile=null;
+function openRestoreModal(filename){
+  restoreTargetFile=filename;
+  document.getElementById('restoreFileName').textContent=filename;
+  document.getElementById('restoreConfirmInput').value='';
+  document.getElementById('restoreBackupErr').className='al';
+  openModal('restoreBackupModal');
+}
+async function submitRestoreBackup(){
+  const e=document.getElementById('restoreBackupErr'); e.className='al';
+  if(document.getElementById('restoreConfirmInput').value.trim()!=='RESTORE'){
+    e.className='al err'; e.textContent='Type RESTORE (exactly) to confirm.'; return;
+  }
+  try{
+    await api(`/api/admin/backups/${encodeURIComponent(restoreTargetFile)}/restore`,'POST');
+    closeModal('restoreBackupModal');
+    alert('✅ Restore complete. The page will now reload.');
+    location.reload();
+  }catch(err){ e.className='al err'; e.textContent=err.message; }
+}
 
 async function createAdmin(){
   const e=document.getElementById('addAdminErr');e.className='al';
