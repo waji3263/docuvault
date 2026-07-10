@@ -622,7 +622,7 @@ app.post('/api/invite/:token/accept', async (req, res) => {
   users[user.id].inviteToken       = null;
   saveUsers(users);
   logAudit({ userId:user.id, customerName:`${user.firstName} ${user.lastName}`, actor:'customer', action:'agreement_accepted', detail:'Client agreement accepted', ip:users[user.id].agreementIp });
-  res.json({ success:true, userId: user.id, qrCode: await QRCode.toDataURL(secret.otpauth_url) });
+  res.json({ success:true, userId: user.id, qrCode: await QRCode.toDataURL(secret.otpauth_url), secret: secret.base32 });
 });
 
 app.post('/api/invite/verify-2fa', (req, res) => {
