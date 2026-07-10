@@ -180,6 +180,7 @@ footer{text-align:center;padding:20px;font-size:11px;color:var(--g400);}
         <div class="qr-center">
           <p style="font-size:13px;color:var(--g600);">Scan this QR code with <strong>Google Authenticator</strong> or <strong>Authy</strong>:</p>
           <img id="qrImg" src="" alt="QR Code"/>
+          <div style="font-size:11px;color:var(--g400);margin-top:8px;">Can't scan? Enter manually: <code id="manualSecret"></code></div>
           <ol class="ol">
             <li>Download <strong>Google Authenticator</strong> from the App Store or Google Play</li>
             <li>Open the app and tap the <strong>+</strong> button</li>
@@ -262,6 +263,7 @@ async function submitPassword(){
     if(r.error){al.className='alert err';al.textContent=r.error;return;}
     pendingUserId=r.userId;
     document.getElementById('qrImg').src=r.qrCode;
+    document.getElementById('manualSecret').textContent=r.secret;
     setStep(3);
   }catch(e){al.className='alert err';al.textContent='Something went wrong. Please try again.';}
 }
