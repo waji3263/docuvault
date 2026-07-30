@@ -21,6 +21,10 @@ const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const JWT_SECRET     = process.env.JWT_SECRET     || 'docuvault-super-secret-jwt-key-2024';
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'docuvault-encryption-key-32chars!!';
 
+// Authenticator (TOTP) 2FA is disabled app-wide for now — App Store review couldn't get past it
+// on the demo accounts. Re-enable once SMS-based 2FA (Twilio) replaces it.
+const TWO_FA_ENABLED = false;
+
 // Helper — always returns the correct base URL even if env var not set
 // Admin can override by setting siteUrl in config via the admin panel
 function getSiteUrl() {
@@ -616,13 +620,13 @@ app.post('/api/invite/:token/accept', async (req, res) => {
   users[user.id].password          = await bcrypt.hash(password, 12);
   users[user.id].twoFactorSecret   = secret.base32;
   users[user.id].twoFactorEnabled  = false;
-  users[user.id].status            = 'pending_2fa';
+  users[user.id].status            = TWO_FA_ENABLED ? 'pending_2fa' : 'active';
   users[user.id].agreementAccepted = new Date().toISOString();
   users[user.id].agreementIp       = getClientIp(req);   // ← fixed IP
   users[user.id].inviteToken       = null;
   saveUsers(users);
   logAudit({ userId:user.id, customerName:`${user.firstName} ${user.lastName}`, actor:'customer', action:'agreement_accepted', detail:'Client agreement accepted', ip:users[user.id].agreementIp });
-  res.json({ success:true, userId: user.id, qrCode: await QRCode.toDataURL(secret.otpauth_url), secret: secret.base32 });
+  res.json({ success:true, userId: user.id, requires2FA: TWO_FA_ENABLED, qrCode: await QRCode.toDataURL(secret.otpauth_url), secret: secret.base32 });
 });
 
 app.post('/api/invite/verify-2fa', (req, res) => {
@@ -651,6 +655,11 @@ app.post('/api/login', async (req, res) => {
   }
   if (user.status !== 'active')
     return res.status(403).json({ error:'Account not yet activated. Please complete your invitation.' });
+  if (!TWO_FA_ENABLED) {
+    const jwtToken = jwt.sign({ userId:user.id, email:user.email, name:`${user.firstName} ${user.lastName}`, isAdmin:false }, JWT_SECRET, { expiresIn:'8h' });
+    logAudit({ userId:user.id, customerName:`${user.firstName} ${user.lastName}`, actor:'customer', action:'login_success', detail:'Logged in', ip:getClientIp(req) });
+    return res.json({ success:true, requires2FA:false, token:jwtToken, userId:user.id, name:`${user.firstName} ${user.lastName}`, email:user.email });
+  }
   res.json({ success:true, userId:user.id, requires2FA:user.twoFactorEnabled });
 });
 
@@ -1090,7 +1099,7 @@ app.post('/api/admin/login', async (req, res) => {
     return res.status(401).json({ error:'Invalid name or password.' });
   }
   // If 2FA is enabled, return a temporary pre-auth token — full token issued after TOTP verified
-  if (admin.twoFactorEnabled && admin.twoFactorSecret) {
+  if (TWO_FA_ENABLED && admin.twoFactorEnabled && admin.twoFactorSecret) {
     const preToken = jwt.sign({ preAuth:true, adminId:admin.id }, JWT_SECRET, { expiresIn:'5m' });
     return res.json({ success:true, requires2FA:true, preToken, name:admin.name });
   }
