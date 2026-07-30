@@ -435,6 +435,7 @@ async function doLogin(){
     const r=await api('/api/login','POST',{email:document.getElementById('loginEmail').value,password:document.getElementById('loginPw').value});
     pendingUserId=r.userId;
     if(r.requires2FA){ document.getElementById('loginStep1').classList.add('hidden'); document.getElementById('loginStep2').classList.remove('hidden'); document.getElementById('twoFaCode').value=''; document.getElementById('twoFaCode').focus(); }
+    else{ authToken=r.token; localStorage.setItem('fpToken',authToken); localStorage.setItem('fpName',r.name); showDashboard(); loadDocs(); loadTaxReturns(); }
   }catch(err){ e.className='alert err'; e.textContent=err.message; }
 }
 async function do2FALogin(){

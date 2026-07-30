@@ -262,9 +262,13 @@ async function submitPassword(){
     const r=await fetch(`/api/invite/${token}/accept`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})}).then(r=>r.json());
     if(r.error){al.className='alert err';al.textContent=r.error;return;}
     pendingUserId=r.userId;
-    document.getElementById('qrImg').src=r.qrCode;
-    document.getElementById('manualSecret').textContent=r.secret;
-    setStep(3);
+    if(r.requires2FA){
+      document.getElementById('qrImg').src=r.qrCode;
+      document.getElementById('manualSecret').textContent=r.secret;
+      setStep(3);
+    }else{
+      setStep(4);
+    }
   }catch(e){al.className='alert err';al.textContent='Something went wrong. Please try again.';}
 }
 
